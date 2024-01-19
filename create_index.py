@@ -27,7 +27,6 @@ def main():
 
     # Create embeddings for all papers in the dataset
     query_cats = set(['cs.AI', 'cs.CL', 'cs.CV', 'cs.LG', 'cs.NE', 'cs.RO'])
-    embeddings = {}
     logging.info('Collecting papers...')
     with open('arxiv-metadata-oai-snapshot.json', 'r') as f:
         for i, paper in enumerate(f):
@@ -38,8 +37,13 @@ def main():
                 title = data['title'].strip().replace('\n', ' ')
                 abstract = data['abstract'].strip().replace('\n', ' ')
                 text = title + ' ' + abstract
+                print("Processing paper id {pid}")
+
+                # Create title+abstract embeddings
                 response = openai_client.embeddings.create(input = text, model='text-embedding-ada-002')
-                embeddings[pid] = {'main': response.data[0].embedding}
+                main_embedding = response.data[0].embedding
+
+                # Create summary of abstract
                 response = openai_client.chat.completions.create(
                                 model="gpt-4",
                                 messages=[
@@ -48,15 +52,24 @@ def main():
                                 ]
                             )
                 summary =  response.choices[0].message.content
+                # Create summary embeddings
                 response = openai_client.embeddings.create(input = summary, model='text-embedding-ada-002')
                 summary_embedding = response.data[0].embedding
-                embeddings[pid]['summary'] = summary_embedding
-    
-    # Add embeddings to Pinecone index
-    for pid, embedding in embeddings.items():
-        index.upsert(str(pid), embedding)
 
-
+                # Upsert embeddings to Pinecone index
+                index.upsert(
+                    vectors=[{"id": str(pid), "values": main_embedding}],
+                    namespace='main'
+                )
+                index.upsert(
+                    vectors=[
+                        {
+                            "id": str(pid),
+                            "values": summary_embedding,
+                            "metadata": {"summary": summary}
+                        }],
+                    namespace='summary'
+                )
 
 
 if __name__ == '__main__':
