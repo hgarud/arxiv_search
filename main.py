@@ -2,13 +2,18 @@
 
 import argparse
 import os
+from typing import Union
 from dotenv import load_dotenv
 load_dotenv()
 
 from openai import OpenAI
 import pinecone
 
+from fastapi import FastAPI
+app = FastAPI()
 
+
+@app.get("/search/{query}")
 def main(query: str):
     # Setup
     openai_client = OpenAI()
