@@ -37,7 +37,6 @@ def main():
                 title = data['title'].strip().replace('\n', ' ')
                 abstract = data['abstract'].strip().replace('\n', ' ')
                 text = title + ' ' + abstract
-                print("Processing paper id {pid}")
 
                 # Create title+abstract embeddings
                 response = openai_client.embeddings.create(input = text, model='text-embedding-ada-002')
